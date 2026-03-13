@@ -523,6 +523,9 @@
             renderCalendar();
             updateProgress();
             renderGraph(); // Initialize the new Momentum Graph
+
+            // DELAY ADDED: Gives mobile screens 150 milliseconds to calculate their width before drawing the graph
+            setTimeout(renderGraph, 150);
         }
 
         function saveData() {
