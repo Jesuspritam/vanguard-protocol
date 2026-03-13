@@ -1,2 +1,704 @@
 # vanguard-protocol
-Vanguard Protocol is a tactical web app designed to forge elite daily discipline. It operates as a personal command center featuring dynamic task management, a visual streak calendar, an SVG progress radar, and automated daily biblical intelligence.
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanguard Protocol</title>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #e5e4d8;
+            --panel-bg: #f2f1eb;
+            --text-color: #2b2d27;
+            --accent-color: #4a542c;
+            --accent-hover: #363e20;
+            --border-color: #c4c5ba;
+            --streak-color: #b8860b;
+            --shadow: 4px 4px 15px rgba(0, 0, 0, 0.08);
+            --font-header: 'Black Ops One', cursive;
+            --font-mono: 'Share Tech Mono', monospace;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0a0b0a;
+            --panel-bg: #141614;
+            --text-color: #d1d5c9;
+            --accent-color: #6a7b45;
+            --accent-hover: #839658;
+            --border-color: #2a2e26;
+            --streak-color: #d4af37;
+            --shadow: 0px 8px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        /* --- UPGRADE 1: RESPONSIVE FULL SCREEN GRID --- */
+        .container {
+            width: 100%;
+            max-width: 650px;
+            /* Default for mobile */
+            transition: max-width 0.3s ease;
+        }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            width: 100%;
+            align-items: start;
+        }
+
+        /* When screen is wide enough (laptops), expand to two columns */
+        @media (min-width: 1000px) {
+            .container {
+                max-width: 1200px;
+                /* Full screen visibility */
+            }
+
+            .layout-grid {
+                grid-template-columns: 350px 1fr;
+                /* Left Sidebar 350px, Checklist takes the rest */
+            }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+
+        h1 {
+            font-family: var(--font-header);
+            font-size: 2.8rem;
+            letter-spacing: 4px;
+            margin: 0 0 5px 0;
+            color: var(--accent-color);
+            font-weight: normal;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.8;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* HQ Daily Briefing Panel */
+        .hq-briefing {
+            background-color: #050505;
+            border: 1px solid var(--accent-color);
+            color: #d1d5c9;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: inset 0 0 15px rgba(106, 123, 69, 0.2);
+        }
+
+        .hq-header {
+            color: var(--accent-color);
+            font-weight: bold;
+            border-bottom: 1px dashed var(--accent-color);
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .hq-verse {
+            font-size: 1.1rem;
+            font-style: italic;
+            margin-bottom: 5px;
+        }
+
+        .hq-ref {
+            color: var(--accent-color);
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .hq-intel {
+            font-size: 0.95rem;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+
+        /* Graphical Circular Progress */
+        .visual-dashboard {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .circular-progress {
+            position: relative;
+            width: 120px;
+            height: 120px;
+        }
+
+        .circular-progress svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .circular-progress circle {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+
+        .bg-circle {
+            stroke: var(--border-color);
+            opacity: 0.3;
+        }
+
+        .fg-circle {
+            stroke: var(--accent-color);
+            stroke-dasharray: 283;
+            stroke-dashoffset: 283;
+            transition: stroke-dashoffset 0.8s ease-in-out;
+        }
+
+        .progress-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: var(--font-header);
+            font-size: 1.5rem;
+            color: var(--accent-color);
+        }
+
+        /* Top Bar Controls */
+        .top-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+            border: 1px solid var(--accent-color);
+            padding: 10px;
+            cursor: pointer;
+            font-family: var(--font-header);
+            font-size: 1rem;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background-color: var(--accent-color);
+            color: #fff;
+        }
+
+        /* Calendar */
+        .calendar-panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .calendar-header {
+            font-family: var(--font-header);
+            color: var(--accent-color);
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .cal-day {
+            padding: 10px 0;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+
+        [data-theme="dark"] .cal-day {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .cal-day.completed {
+            background-color: var(--accent-color);
+            color: #fff;
+            font-weight: bold;
+            border-color: var(--accent-color);
+        }
+
+        /* --- UPGRADE 2: ADD TASK FORM --- */
+        .add-task-form {
+            display: flex;
+            gap: 10px;
+            background-color: var(--panel-bg);
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            /* Helps on small mobile screens */
+        }
+
+        .add-task-form input {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+        }
+
+        .add-task-form input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        #new-task-time {
+            width: 110px;
+        }
+
+        #new-task-desc {
+            flex-grow: 1;
+        }
+
+        /* Checklist & Tasks */
+        .checklist {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+        }
+
+        .task {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .task:last-child {
+            border-bottom: none;
+        }
+
+        .task-content {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+        }
+
+        input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--accent-color);
+            margin-right: 15px;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        input[type="checkbox"]:checked {
+            background-color: var(--accent-color);
+        }
+
+        input[type="checkbox"]:checked::after {
+            content: '✔';
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .task-text {
+            font-size: 1.1rem;
+        }
+
+        .completed-task .task-text {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+
+        .time-badge {
+            color: var(--accent-color);
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        /* --- UPGRADE 3: TASK REARRANGEMENT BUTTONS --- */
+        .task-actions {
+            display: flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .action-btn {
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+        }
+
+        .action-btn:hover {
+            background: var(--accent-color);
+            color: #fff;
+        }
+
+        .delete-btn:hover {
+            background: #8b0000;
+            border-color: #8b0000;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>VANGUARD</h1>
+            <div class="subtitle">Daily Operations Protocol</div>
+        </header>
+
+        <div class="layout-grid">
+
+            <div class="left-panel" style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="hq-briefing">
+                    <div class="hq-header">HQ SECURE TRANSMISSION: DAILY INTEL</div>
+                    <div class="hq-verse" id="hq-verse">Loading...</div>
+                    <div class="hq-ref" id="hq-ref"></div>
+                    <div class="hq-intel" id="hq-intel"></div>
+                </div>
+
+                <div class="visual-dashboard">
+                    <div class="circular-progress">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="bg-circle" cx="50" cy="50" r="45"></circle>
+                            <circle class="fg-circle" id="circle-progress" cx="50" cy="50" r="45"></circle>
+                        </svg>
+                        <div class="progress-percentage" id="progress-text">0%</div>
+                    </div>
+                </div>
+
+                <div class="top-bar">
+                    <button onclick="toggleTheme()">TOGGLE OPTICS</button>
+                    <button onclick="resetDaily()">RESET DAILY OP</button>
+                </div>
+
+                <div class="calendar-panel">
+                    <div class="calendar-header" id="month-display">MONTH OP-RECORD</div>
+                    <div class="calendar-grid" id="calendar-grid"></div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+
+                <div class="add-task-form">
+                    <input type="text" id="new-task-time" placeholder="Ex: 05:30 AM">
+                    <input type="text" id="new-task-desc" placeholder="Enter new directive...">
+                    <button onclick="addNewTask()">ADD TASK</button>
+                </div>
+
+                <div class="checklist" id="task-list"></div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- COMMAND DATABASE ---
+        const missionDirectives = [
+            { verse: "In the beginning was the Word, and the Word was with God, and the Word was God.", ref: "John 1:1", intel: "Every structure needs an unbreakable foundation. Just as the Word is the origin point of all creation, your daily discipline and study must be the origin point of your personal growth." },
+            { verse: "For God gave us a spirit not of fear but of power and love and self-control.", ref: "2 Timothy 1:7", intel: "Self-control is not a restriction; it is a divine weapon. It is the ability to overrule temporary emotions to execute a long-term strategy." },
+            { verse: "Commit your work to the LORD, and your plans will be established.", ref: "Proverbs 16:3", intel: "Action precedes clarity. When you execute your daily duties with absolute dedication to your King, the overall path of your life stabilizes." },
+            { verse: "Therefore put on the full armor of God, so that when the day of evil comes, you may be able to stand your ground.", ref: "Ephesians 6:13", intel: "Discipline is armor. You do not wait for the battle to put your armor on; you wear it daily through consistent habits." },
+            { verse: "Whatever you do, work heartily, as for the Lord and not for men.", ref: "Colossians 3:23", intel: "Your standard of excellence is not measured by human expectations, but by your representation of the Kingdom. Code and study accordingly." },
+            { verse: "Let all that you do be done in love.", ref: "1 Corinthians 16:14", intel: "Even the harshest discipline must be rooted in love for your King, your ministry, and your future self." },
+            { verse: "I can do all things through him who strengthens me.", ref: "Philippians 4:13", intel: "When the Python logic gets complex and the schedule feels heavy, remember your strength is outsourced to an infinite supply." },
+            { verse: "But the fruit of the Spirit is... self-control; against such things there is no law.", ref: "Galatians 5:22-23", intel: "Waking up at 5:30 AM and sticking to the schedule is the direct manifestation of spiritual fruit." },
+            { verse: "Be strong and courageous. Do not be frightened, and do not be dismayed, for the LORD your God is with you wherever you go.", ref: "Joshua 1:9", intel: "Courage is required to stick to a path others abandon. You are an ambassador on active deployment." },
+            { verse: "Look carefully then how you walk, not as unwise but as wise, making the best use of the time...", ref: "Ephesians 5:15-16", intel: "Time is your most limited tactical resource. Guard your buffer zones and sleep schedule fiercely." },
+            { verse: "Do not be conformed to this world, but be transformed by the renewal of your mind...", ref: "Romans 12:2", intel: "Your Bible study and meditation are not just reading; they are the active reprogramming of your mind." },
+            { verse: "He who is faithful in a very little is also faithful in much...", ref: "Luke 16:10", intel: "Consistency in small things (like sleeping on time) qualifies you for major responsibilities in your career and ministry." },
+            { verse: "No soldier gets entangled in civilian pursuits, since his aim is to please the one who enlisted him.", ref: "2 Timothy 2:4", intel: "Keep your focus sharp. Avoid distractions that pull you away from your coding, study, and daily protocol." },
+            { verse: "Let us not grow weary of doing good, for in due season we will reap, if we do not give up.", ref: "Galatians 6:9", intel: "The streak on your calendar is proof of endurance. The harvest of your skills and discipline is coming." }
+        ];
+
+        function loadDailyBriefing() {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 0);
+            const diff = now - start;
+            const oneDay = 1000 * 60 * 60 * 24;
+            const dayOfYear = Math.floor(diff / oneDay);
+
+            const index = dayOfYear % missionDirectives.length;
+            const intel = missionDirectives[index];
+
+            document.getElementById('hq-verse').innerText = `"${intel.verse}"`;
+            document.getElementById('hq-ref').innerText = `— ${intel.ref}`;
+            document.getElementById('hq-intel').innerText = `INTEL: ${intel.intel}`;
+        }
+
+        // --- TASK & PROGRESS LOGIC ---
+        const defaultTasks = [
+            { time: "05:30 AM", desc: "Wake up & Hydrate" },
+            { time: "05:45 AM", desc: "Prayer 1: Morning Worship" },
+            { time: "06:15 AM", desc: "Bible Study & Meditation" },
+            { time: "07:30 AM", desc: "Morning Routine" },
+            { time: "09:00 AM", desc: "Breakfast & College/Tasks" },
+            { time: "01:00 PM", desc: "Lunch & Prayer 2" },
+            { time: "02:00 PM", desc: "Daily Responsibilities" },
+            { time: "05:30 PM", desc: "Career Study (Python, DSA)" },
+            { time: "07:30 PM", desc: "Prayer 3: Personal Evening" },
+            { time: "08:00 PM", desc: "Buffer / Review" },
+            { time: "08:30 PM", desc: "Dinner" },
+            { time: "09:15 PM", desc: "Evening Prayer Meeting" },
+            { time: "10:05 PM", desc: "Wind Down (No screens)" },
+            { time: "10:30 PM", desc: "In Bed (Sleep by 10:45 PM)" }
+        ];
+
+        // Load tasks from storage, or use defaults if empty
+        let tasks = JSON.parse(localStorage.getItem('vgCustomTasks')) || defaultTasks;
+        let savedTasks = JSON.parse(localStorage.getItem('vgTasks')) || Array(tasks.length).fill(false);
+        let completedDates = JSON.parse(localStorage.getItem('vgHistory')) || [];
+
+        // Safety sync in case arrays got mismatched
+        if (savedTasks.length !== tasks.length) {
+            savedTasks = Array(tasks.length).fill(false);
+        }
+
+        function init() {
+            if (localStorage.getItem('vgTheme') === 'dark') document.body.setAttribute('data-theme', 'dark');
+            loadDailyBriefing();
+            renderTasks();
+            renderCalendar();
+            updateProgress();
+        }
+
+        function saveData() {
+            localStorage.setItem('vgCustomTasks', JSON.stringify(tasks));
+            localStorage.setItem('vgTasks', JSON.stringify(savedTasks));
+        }
+
+        function renderTasks() {
+            const taskListDiv = document.getElementById('task-list');
+            taskListDiv.innerHTML = '';
+
+            tasks.forEach((task, index) => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = 'task';
+                if (savedTasks[index]) taskDiv.classList.add('completed-task');
+
+                // Checkbox and Text Wrapper
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'task-content';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = savedTasks[index];
+                checkbox.onchange = () => toggleTask(index, taskDiv);
+
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'task-text';
+                labelDiv.innerHTML = `<span class="time-badge">${task.time}</span>— ${task.desc}`;
+
+                contentDiv.appendChild(checkbox);
+                contentDiv.appendChild(labelDiv);
+
+                // Action Buttons (Move Up, Move Down, Delete)
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'task-actions';
+
+                const upBtn = document.createElement('button');
+                upBtn.className = 'action-btn';
+                upBtn.innerText = '▲';
+                upBtn.onclick = () => moveTask(index, -1);
+
+                const downBtn = document.createElement('button');
+                downBtn.className = 'action-btn';
+                downBtn.innerText = '▼';
+                downBtn.onclick = () => moveTask(index, 1);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'action-btn delete-btn';
+                delBtn.innerText = '✖';
+                delBtn.onclick = () => deleteTask(index);
+
+                // Don't show Up on first item, Don't show Down on last item
+                if (index > 0) actionsDiv.appendChild(upBtn);
+                if (index < tasks.length - 1) actionsDiv.appendChild(downBtn);
+                actionsDiv.appendChild(delBtn);
+
+                taskDiv.appendChild(contentDiv);
+                taskDiv.appendChild(actionsDiv);
+                taskListDiv.appendChild(taskDiv);
+            });
+            updateProgress();
+        }
+
+        // --- NEW TASK MANAGEMENT FUNCTIONS ---
+        function addNewTask() {
+            const timeInput = document.getElementById('new-task-time');
+            const descInput = document.getElementById('new-task-desc');
+
+            if (!descInput.value.trim()) {
+                alert("Directive description cannot be empty.");
+                return;
+            }
+
+            tasks.push({
+                time: timeInput.value.trim() || "--:--",
+                desc: descInput.value.trim()
+            });
+            savedTasks.push(false);
+
+            timeInput.value = '';
+            descInput.value = '';
+
+            saveData();
+            renderTasks();
+        }
+
+        function moveTask(index, direction) {
+            const targetIndex = index + direction;
+            if (targetIndex >= 0 && targetIndex < tasks.length) {
+                // Swap tasks
+                [tasks[index], tasks[targetIndex]] = [tasks[targetIndex], tasks[index]];
+                // Swap completion status to match
+                [savedTasks[index], savedTasks[targetIndex]] = [savedTasks[targetIndex], savedTasks[index]];
+                saveData();
+                renderTasks();
+            }
+        }
+
+        function deleteTask(index) {
+            if (confirm("Delete this directive from the protocol?")) {
+                tasks.splice(index, 1);
+                savedTasks.splice(index, 1);
+                saveData();
+                renderTasks();
+            }
+        }
+
+        function toggleTask(index, taskElement) {
+            savedTasks[index] = !savedTasks[index];
+            saveData();
+            savedTasks[index] ? taskElement.classList.add('completed-task') : taskElement.classList.remove('completed-task');
+            updateProgress();
+            checkAllCompleted();
+        }
+
+        function updateProgress() {
+            if (tasks.length === 0) {
+                document.getElementById('progress-text').innerText = '0%';
+                document.getElementById('circle-progress').style.strokeDashoffset = 283;
+                return;
+            }
+
+            const completedCount = savedTasks.filter(t => t).length;
+            const percentage = Math.round((completedCount / tasks.length) * 100);
+
+            document.getElementById('progress-text').innerText = percentage + '%';
+
+            const circle = document.getElementById('circle-progress');
+            const offset = 283 - (283 * (percentage / 100));
+            circle.style.strokeDashoffset = offset;
+        }
+
+        function checkAllCompleted() {
+            if (tasks.length === 0) return;
+            const allDone = savedTasks.every(t => t === true);
+            if (allDone) {
+                const today = new Date().toISOString().split('T')[0];
+                if (!completedDates.includes(today)) {
+                    completedDates.push(today);
+                    localStorage.setItem('vgHistory', JSON.stringify(completedDates));
+                    renderCalendar();
+                    setTimeout(() => alert("MISSION ACCOMPLISHED. DAY SECURED."), 300);
+                }
+            }
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = date.getMonth();
+
+            const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+            document.getElementById('month-display').innerText = `${monthNames[month]} ${year} OP-RECORD`;
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'cal-day';
+                dayDiv.innerText = i;
+
+                const checkDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+
+                if (completedDates.includes(checkDate)) {
+                    dayDiv.classList.add('completed');
+                    dayDiv.innerText = '✔';
+                }
+
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        function resetDaily() {
+            if (confirm("INITIATE PROTOCOL RESET?")) {
+                savedTasks = Array(tasks.length).fill(false);
+                saveData();
+                init();
+            }
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                localStorage.setItem('vgTheme', 'light');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                localStorage.setItem('vgTheme', 'dark');
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
